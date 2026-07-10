@@ -1,21 +1,78 @@
-# Python缓存
+# ==================== Python ====================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
 
-# 虚拟环境
+# ==================== Java / Maven ====================
+target/
+*.class
+*.jar
+*.war
+!src/flink_jobs/target/
+!src/spark_jobs/target/
+!src/api/target/
+
+# ==================== Scala ====================
+*.class
+*.jar
+
+# ==================== 虚拟环境 ====================
 venv/
 .venv/
-
-# IDE配置
-.vscode/
-.idea/
-
-# 环境变量（里面可能有密码）
+env/
 .env
 
-# 大数据文件
+# ==================== IDE 配置 ====================
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ==================== 操作系统 ====================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==================== 敏感信息 ====================
+*.env
+*.key
+*.pem
+credentials/
+secrets/
+
+# ==================== 大数据文件（不应提交到Git） ====================
 *.parquet
 *.orc
+*.avro
+data/*.csv
+data/*.json
+data/*.jsonl
 
-# 临时文件
+# 但保留 data 目录本身和 README
+!data/.gitkeep
+!data/README.md
+
+# ==================== 日志文件 ====================
 *.log
+logs/
+nohup.out
+
+# ==================== 依赖目录 ====================
+node_modules/
+
+# ==================== Docker ====================
+docker/volumes/
+
+# ==================== Jupyter ====================
+.ipynb_checkpoints/
+*.ipynb_checkpoints

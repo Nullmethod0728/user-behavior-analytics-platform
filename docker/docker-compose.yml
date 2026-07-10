@@ -1,0 +1,106 @@
+version: '3.8'
+
+# ============================================================
+# 用户行为分析平台 - 基础设施编排
+# 使用方式：
+#   cd docker
+#   docker-compose up -d          # 启动所有服务
+#   docker-compose down           # 停止所有服务
+#   docker-compose logs -f kafka  # 查看kafka日志
+# ============================================================
+
+services:
+
+  # ==================== Zookeeper ====================
+  # Kafka 依赖此服务管理集群元数据（哪些节点在线、谁是Leader等）
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: analytics-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181        # 客户端连接端口
+      ZOOKEEPER_TICK_TIME: 2000          # 心跳间隔(ms)，用于会话超时检测
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data   # 数据持久化，重启不丢
+      - zookeeper-log:/var/lib/zookeeper/log
+
+  # ==================== Kafka Broker ====================
+  # 消息队列核心 - 类比"数据高速公路"
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: analytics-kafka
+    depends_on:
+      - zookeeper                         # 等zookeeper先启动
+    environment:
+      KAFKA_BROKER_ID: 1
+      # 对外暴露的地址（你本机访问用 localhost:9092）
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # 内部使用的监听地址
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # Zookeeper 连接地址
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # 自动创建 Topic（开发环境用，生产环境应手动管理）
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # 默认分区数
+      KAFKA_NUM_PARTITIONS: 3
+      # 日志保留时间（7天）
+      KAFKA_LOG_RETENTION_HOURS: 168
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+      # 挂载初始化脚本，Kafka启动后自动创建Topic
+      - ./kafka/init-topics.sh:/tmp/init-topics.sh
+
+  # ==================== Kafka 初始化 ====================
+  # 这是一个"一次性"容器：启动后执行init-topics.sh创建Topic，然后退出
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: analytics-kafka-init
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/bash", "/tmp/init-topics.sh"]
+    volumes:
+      - ./kafka/init-topics.sh:/tmp/init-topics.sh
+
+  # ==================== ClickHouse ====================
+  # OLAP 分析型数据库 - 列式存储，聚合查询极快
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: analytics-clickhouse
+    environment:
+      CLICKHOUSE_DB: analytics              # 默认数据库名
+      CLICKHOUSE_USER: admin                # 用户名
+      CLICKHOUSE_PASSWORD: admin123         # 密码
+    ports:
+      - "8123:8123"   # HTTP 接口（你用浏览器/curl查询用这个）
+      - "9000:9000"   # Native TCP 接口（JDBC驱动/Flink连接用这个）
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      # 启动时自动执行的建表SQL
+      - ./clickhouse/init-tables.sql:/docker-entrypoint-initdb.d/init.sql
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # ==================== Redis ====================
+  # 内存缓存数据库 - 存实时指标，读写极快
+  redis:
+    image: redis:7.2-alpine
+    container_name: analytics-redis
+    command: redis-server --requirepass redis123  # 设置密码
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+# ==================== 卷声明 ====================
+# 具名卷(named volumes)使数据在容器删除后依然保留
+volumes:
+  zookeeper-data:
+  zookeeper-log:
+  kafka-data:
+  clickhouse-data:
+  redis-data:
