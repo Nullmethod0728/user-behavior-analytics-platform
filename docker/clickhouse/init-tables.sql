@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS analytics.ods_user_behavior_log
     event_time      DateTime,            -- 事件发生时间（精确到秒）
     server_time     DateTime DEFAULT now(), -- 服务端接收时间
 
-    -- 设备信息
+    -- 设备信息（面试亮点：手机厂商埋点必带字段）
     device_model    String,              -- 设备型号: 如 Find X6 Pro
     os_version      String,              -- 操作系统版本: 如 Android 14
     app_version     String,              -- App版本号: 如 8.6.3
