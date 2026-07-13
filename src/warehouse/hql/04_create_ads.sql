@@ -1,0 +1,27 @@
+-- ============================================================
+-- ADS 层 (Application Data Service) — 应用数据层
+-- 职责：面向 Dashboard / BI 报表的最终指标表
+-- 数据来源：Spark 离线计算结果
+-- ============================================================
+
+-- analytics.ads_realtime_metrics   — 实时指标（Flink 写入）
+-- analytics.ads_funnel_analysis    — 漏斗分析（Spark 写入）
+-- analytics.ads_retention          — 留存分析（Spark 写入）
+-- analytics.ads_user_profile       — 用户画像（Spark 写入，需另行建表）
+
+-- 用户画像表定义（补充init-tables.sql中未包含的）
+-- CREATE TABLE IF NOT EXISTS analytics.ads_user_profile (
+--     user_id         String,
+--     activity_level  String,       -- 高活跃/中活跃/低活跃/沉睡用户
+--     user_type       String,       -- 付费用户/下载型用户/搜索型用户/浏览型用户
+--     total_events    UInt64,
+--     active_days     UInt64,
+--     downloads       UInt64,
+--     searches        UInt64,
+--     purchases       UInt64,
+--     device_model    String,
+--     first_seen      DateTime,
+--     last_seen       DateTime
+-- )
+-- ENGINE = MergeTree()
+-- ORDER BY user_id;

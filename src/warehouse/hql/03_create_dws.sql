@@ -1,0 +1,12 @@
+-- ============================================================
+-- DWS 层 (Data Warehouse Summary) — 汇总数据层
+-- 职责：按天/小时汇总的核心指标
+-- 数据来源：Spark DwdToDws 每天凌晨计算
+-- 保留时间：365 天
+-- ============================================================
+
+-- 表名: analytics.dws_daily_metrics
+-- 引擎: SummingMergeTree()
+-- 主键: (stat_date, event_type)
+-- 核心字段: pv, uv, new_user_count, avg_duration,
+--           top_city, top_device, download_count, search_count
