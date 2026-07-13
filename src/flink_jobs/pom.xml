@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ======== 项目坐标 ======== -->
+    <groupId>com.analytics</groupId>
+    <artifactId>flink-jobs</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>User Behavior Flink Jobs</name>
+    <description>实时用户行为分析 - Flink 流处理作业</description>
+
+    <!-- ======== 版本统一管理 ======== -->
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <flink.version>1.17.2</flink.version>
+        <scala.binary.version>2.12</scala.binary.version>
+        <!-- ↑ Flink 本身用 Scala 写的，2.12 是 Scala 版本号，和我们的 Java 代码无关 -->
+    </properties>
+
+    <!-- ======== 依赖清单 ======== -->
+    <dependencies>
+
+        <!-- ─── Flink 核心 ─── -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java</artifactId>
+            <version>${flink.version}</version>
+            <!-- scope=provided: 本地开发时需要，但打成JAR提交到Flink集群时，
+                 Flink集群自带这个JAR，不用重复打包 -->
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ─── Flink Kafka 连接器 ─── -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-kafka</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+
+        <!-- ─── Flink CEP (复杂事件处理) ─── -->
+        <!-- 用于检测"下载量5分钟内下降50%"这种模式 -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-cep</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+
+        <!-- ─── JSON 解析 ─── -->
+        <!-- Flink 官方推荐用 Jackson 处理 JSON -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-shaded-jackson</artifactId>
+            <version>2.14.2-17.0</version>
+        </dependency>
+
+        <!-- ─── Redis 客户端 ─── -->
+        <!-- 实时指标写入 Redis，供 Dashboard 读取 -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>5.1.0</version>
+        </dependency>
+
+        <!-- ─── ClickHouse JDBC 驱动 ─── -->
+        <!-- 聚合结果批量写入 ClickHouse -->
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>0.6.0</version>
+            <classifier>all</classifier>
+            <!-- classifier=all 表示包含所有依赖的fat jar, 否则需要额外引入HTTP Client -->
+        </dependency>
+
+        <!-- ─── 日志 ─── -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+
+    </dependencies>
+
+    <!-- ======== 构建配置 ======== -->
+    <build>
+        <plugins>
+            <!-- Maven 编译插件：指定 Java 版本 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Shade 插件：打成 fat jar（包含所有依赖） -->
+            <!-- 这样才能提交到 Flink 集群运行 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer
+                                    implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <!-- 指定主类，这样 java -jar xxx.jar 就知道从哪启动 -->
+                                    <mainClass>com.analytics.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

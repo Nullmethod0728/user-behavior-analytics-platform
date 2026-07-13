@@ -13,9 +13,6 @@ target/
 *.class
 *.jar
 *.war
-!src/flink_jobs/target/
-!src/spark_jobs/target/
-!src/api/target/
 
 # ==================== Scala ====================
 *.class
