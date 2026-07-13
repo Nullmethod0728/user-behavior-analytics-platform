@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户行为分析平台 - 实时监控大屏</title>
+
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+    <!-- ======== 顶部标题栏 ======== -->
+    <header class="header">
+        <h1>📊 用户行为埋点日志分析平台</h1>
+        <div class="header-info">
+            <span id="current-time">--</span>
+            <span class="status-dot" id="api-status">●</span>
+            <span>数据源: ClickHouse + Redis</span>
+        </div>
+    </header>
+
+    <!-- ======== 第一行: KPI 翻牌器 ======== -->
+    <section class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">📄 实时 PV</div>
+            <div class="kpi-value" id="kpi-pv">--</div>
+            <div class="kpi-sub">过去5分钟浏览量</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">👤 实时 UV</div>
+            <div class="kpi-value" id="kpi-uv">--</div>
+            <div class="kpi-sub">过去5分钟独立访客</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">📥 今日下载量</div>
+            <div class="kpi-value" id="kpi-download">--</div>
+            <div class="kpi-sub">App下载总次数</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">🔍 今日搜索量</div>
+            <div class="kpi-value" id="kpi-search">--</div>
+            <div class="kpi-sub">用户搜索总次数</div>
+        </div>
+    </section>
+
+    <!-- ======== 第二行: 趋势图 + 漏斗图 ======== -->
+    <section class="chart-row two-col">
+        <div class="chart-card">
+            <div class="chart-title">📈 最近24小时 PV/UV 趋势</div>
+            <div class="chart-container" id="chart-trend"></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">🔽 下载转化漏斗</div>
+            <div class="chart-container" id="chart-funnel"></div>
+        </div>
+    </section>
+
+    <!-- ======== 第三行: 留存率 + Top下载 ======== -->
+    <section class="chart-row two-col">
+        <div class="chart-card">
+            <div class="chart-title">📅 用户留存率</div>
+            <div class="chart-container" id="chart-retention"></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">🏆 最近7天下载量 Top 10</div>
+            <div class="chart-container" id="chart-top-downloads"></div>
+        </div>
+    </section>
+
+    <!-- ======== 底部状态栏 ======== -->
+    <footer class="footer">
+        <span>数据更新时间: <strong id="last-update">--</strong></span>
+        <span>API 地址: <code>http://localhost:8080</code></span>
+        <span>数据生成器: Python 模拟 | 实时计算: Flink | 离线计算: Spark</span>
+    </footer>
+
+    <!-- 自定义 JS -->
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+
+</body>
+</html>
