@@ -24,6 +24,10 @@
                        → Spark(离线) → ClickHouse(数据仓库) → BI报表
 ```
 
+## 🖥️ 预览
+
+![Dashboard 实时监控大屏](screenshots/用户行为埋点日志分析平台.png)
+
 ---
 
 ## 🏗️ 系统架构
@@ -242,6 +246,8 @@ python -m http.server 3000
 - ✅ **提升幅度** — uplift = (B值 - A值) / A值 × 100%
 - ✅ **显著性检验** — Fisher 精确检验 / t-test / Mann-Whitney U
 - ✅ **实验管理** — 可视化配置页面，支持多实验并行
+
+![AB 实验配置管理](screenshots/AB实验配置管理.png)
 
 ### 可视化
 - ✅ **实时大屏** — 数字翻牌器 + 趋势折线图
