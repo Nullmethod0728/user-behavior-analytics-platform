@@ -47,7 +47,11 @@ CREATE TABLE IF NOT EXISTS analytics.ods_user_behavior_log
     properties      String DEFAULT '{}',
 
     -- 数据来源标记
-    source          String DEFAULT 'simulator'  -- simulator=模拟数据, real=真实数据
+    source          String DEFAULT 'simulator', -- simulator=模拟数据, real=真实数据
+
+    -- AB 实验字段
+    experiment_id   String DEFAULT '',         -- 实验ID
+    variant         String DEFAULT ''           -- 实验分组: A / B
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMMDD(event_time)
@@ -85,7 +89,9 @@ CREATE TABLE IF NOT EXISTS analytics.dwd_user_behavior
     city            String,
     duration        Int32 DEFAULT 0,
     properties      String DEFAULT '{}',
-    source          String DEFAULT 'simulator'
+    source          String DEFAULT 'simulator',
+    experiment_id   String DEFAULT '',
+    variant         String DEFAULT ''
 )
 ENGINE = ReplacingMergeTree()
 PARTITION BY toYYYYMMDD(event_time)
@@ -173,4 +179,28 @@ ENGINE = MergeTree()
 PARTITION BY toYYYYMM(first_date)
 ORDER BY (first_date, ret_day)
 TTL first_date + INTERVAL 365 DAY
+SETTINGS index_granularity = 8192;
+
+
+-- ==================== 7. AB 实验结果表 ====================
+-- 每天跑 Spark AB 计算，存在这里供 Dashboard 拉取
+
+CREATE TABLE IF NOT EXISTS analytics.ads_ab_experiment
+(
+    experiment_id   String,              -- 实验ID
+    stat_date       Date,                -- 统计日期
+    variant         String,              -- 分组: A 或 B
+    metric_name     String,              -- 指标名: pv/uv/download_count/download_conversion_rate/...
+    metric_value    Float64,             -- 指标值
+    metric_unit     String DEFAULT '',   -- 单位: 次 / % / ms
+    user_count      UInt64 DEFAULT 0,    -- 该组用户总数
+    p_value         Float64 DEFAULT -1,  -- P值（<0.05 表示统计显著）-1=未计算
+    is_significant  UInt8 DEFAULT 0,     -- 是否统计显著: 0=否 1=是
+    uplift          Float64 DEFAULT 0,   -- 实验组相对对照组的提升幅度 (%)
+    sample_data     String DEFAULT ''    -- 抽样数据(JSON)，用于显著性检验
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(stat_date)
+ORDER BY (experiment_id, stat_date, variant, metric_name)
+TTL stat_date + INTERVAL 90 DAY
 SETTINGS index_granularity = 8192;

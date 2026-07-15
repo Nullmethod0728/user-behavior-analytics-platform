@@ -96,4 +96,28 @@ public class ClickHouseService {
             """;
         return jdbcTemplate.queryForList(sql, limit);
     }
+
+    /**
+     * 查询 AB 实验数据
+     */
+    public List<Map<String, Object>> getABExperiment(String experimentId, String date) {
+        String sql = """
+            SELECT
+                experiment_id,
+                stat_date,
+                variant,
+                metric_name,
+                metric_value,
+                metric_unit,
+                user_count,
+                p_value,
+                is_significant,
+                uplift
+            FROM analytics.ads_ab_experiment
+            WHERE experiment_id = ?
+              AND stat_date = ?
+            ORDER BY metric_name, variant
+            """;
+        return jdbcTemplate.queryForList(sql, experimentId, date);
+    }
 }

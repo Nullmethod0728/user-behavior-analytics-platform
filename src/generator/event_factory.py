@@ -11,6 +11,7 @@
 
 import random
 import uuid
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 
@@ -27,6 +28,8 @@ from config import (
     SEARCH_KEYWORDS,
     USER_POOL_SIZE,
     DEVICE_POOL_SIZE,
+    EXPERIMENTS,
+    AB_EXPERIMENT_ENABLED,
 )
 from models import UserBehaviorEvent
 
@@ -103,6 +106,30 @@ class EventFactory:
 
         self.users = [f"user_{i:06d}" for i in range(1, USER_POOL_SIZE + 1)]
         self.devices = [f"device_{i:06d}" for i in range(1, DEVICE_POOL_SIZE + 1)]
+
+        # ── AB 实验：预计算每个用户的分组 ──
+        # 关键设计：用 hash(user_id) 做确定性分桶
+        #   同一个 user_id 永远落在同一分组 → 用户体验一致
+        #   不同实验之间用户分组独立（用 experiment_id 参与 hash）
+        self.user_variants: dict = {}  # {(user_id, experiment_id): variant}
+        if AB_EXPERIMENT_ENABLED:
+            for exp_id, exp_config in EXPERIMENTS.items():
+                a_pct = exp_config["traffic_split"]["A"]
+                for user_id in self.users:
+                    # hashlib.md5(user_id + experiment_id) → 每个实验独立分桶
+                    # 用 md5 替代 hash() 的原因是：Python 的 hash() 每次启动
+                    # 解释器都会变化（PYTHONHASHSEED），导致同一用户在不同
+                    # 运行时被分到不同组——这在 AB 实验中是致命的
+                    hash_bytes = hashlib.md5(
+                        f"{user_id}_{exp_id}".encode("utf-8")
+                    ).digest()
+                    bucket = int.from_bytes(hash_bytes[:4], "big") % 100
+                    variant = "A" if bucket < a_pct else "B"
+                    self.user_variants[(user_id, exp_id)] = variant
+            print(f"   AB 实验: {len(EXPERIMENTS)} 个实验已启用")
+            for exp_id, exp_config in EXPERIMENTS.items():
+                labels = exp_config["variant_labels"]
+                print(f"     {exp_id}: {labels['A']} vs {labels['B']}")
 
         # ── 给每台设备预设属性 ──
         # 一台设备的型号、系统版本是固定的（不会今天OPPO明天vivo）
@@ -261,6 +288,29 @@ class EventFactory:
 
         return props
 
+    # ── AB 实验分桶 ──
+
+    def _get_experiment_assignment(self, user_id: str) -> Tuple[str, str]:
+        """
+        获取用户在实验中的分组。
+
+        返回: (experiment_id, variant)
+          - 如果用户参与多个实验，随机选一个正在进行的实验
+          - 如果 AB 实验关闭，返回空字符串
+
+        核心机制：hash(user_id + experiment_id) % 100 确定性分桶
+          同一个用户永远落同一组 → 用户体验一致
+          不同实验独立 hash → 实验之间互不干扰
+        """
+        if not AB_EXPERIMENT_ENABLED or not EXPERIMENTS:
+            return "", ""
+
+        # 简单策略：随机选一个实验，实际生产环境中
+        # 一个用户会同时参与多个实验（正交分流）
+        exp_id = random.choice(list(EXPERIMENTS.keys()))
+        variant = self.user_variants.get((user_id, exp_id), "")
+        return exp_id, variant
+
     # ── 核心方法：生成一条事件 ──
 
     def generate_event(self, base_time: Optional[datetime] = None) -> UserBehaviorEvent:
@@ -313,6 +363,9 @@ class EventFactory:
         # ── 10. Properties ──
         properties = self._generate_properties(event_type)
 
+        # ── 11. AB 实验分组 ──
+        experiment_id, variant = self._get_experiment_assignment(user_id)
+
         # ── 组装 ──
         event = UserBehaviorEvent(
             event_type=event_type,
@@ -330,6 +383,8 @@ class EventFactory:
             duration=duration,
             properties=properties,
             source="simulator",
+            experiment_id=experiment_id,
+            variant=variant,
         )
 
         return event

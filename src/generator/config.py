@@ -168,7 +168,48 @@ KAFKA_CONFIG = {
 }
 
 # ============================================================
-# 11. 输出配置
+# 11. AB 实验配置
+# ============================================================
+# 模拟应用商店正在进行的 A/B 实验
+# 每个实验有一个实验ID、两个分组（A=对照组, B=实验组）、流量比例、目标指标
+#
+# 面试要点：
+#   - 用户分桶用 hash(user_id) % 100，保证同一用户始终在同一分组（避免用户体验不一致）
+#   - 流量比例不是严格的数学均分，大数定律下 5000 用户足够近似均匀
+#   - 实验配置定义了"要验证什么假设"，比如"新推荐算法能否提升下载转化率"
+
+EXPERIMENTS = {
+    "exp_001_home_rec_algo": {
+        "name": "首页推荐算法优化",
+        "description": "测试新推荐排序算法（基于用户兴趣模型）对下载转化率的影响，对照组使用热度排序",
+        "variants": ["A", "B"],
+        "variant_labels": {"A": "对照组-热度排序", "B": "实验组-兴趣排序"},
+        "traffic_split": {"A": 50, "B": 50},          # 各50%流量
+        "primary_metric": "download_conversion_rate", # 核心指标：下载转化率
+        "secondary_metrics": ["pv", "uv", "avg_duration", "app_click_rate"],
+        "start_date": "2026-07-10",
+        "end_date": "2026-07-20",
+        "hypothesis": "兴趣排序能提升下载转化率至少5%",
+    },
+    "exp_002_search_ranking": {
+        "name": "搜索排序策略对比",
+        "description": "测试搜索结果的排序策略：对照组按相关性排序，实验组加入下载量权重",
+        "variants": ["A", "B"],
+        "variant_labels": {"A": "对照组-纯相关性", "B": "实验组-相关性+下载权重"},
+        "traffic_split": {"A": 60, "B": 40},          # 实验组先拿40%流量降低风险
+        "primary_metric": "search_to_download_rate",  # 搜索→下载转化率
+        "secondary_metrics": ["search_count", "avg_search_position_clicked"],
+        "start_date": "2026-07-10",
+        "end_date": "2026-07-17",
+        "hypothesis": "加入下载量权重后搜索到下载转化率提升≥8%",
+    },
+}
+
+# 是否启用 AB 实验分流（关闭后所有事件 experiment_id 为空）
+AB_EXPERIMENT_ENABLED = True
+
+# ============================================================
+# 12. 输出配置
 # ============================================================
 # 本地文件输出路径
 OUTPUT_FILE_PATH = "../../data/sample_events.jsonl"

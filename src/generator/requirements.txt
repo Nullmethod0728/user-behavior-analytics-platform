@@ -14,3 +14,9 @@ click>=8.1.0
 
 # 进度条 — 终端显示生成进度
 tqdm>=4.66.0
+
+# ClickHouse Python 客户端 — 显著性检验脚本用
+clickhouse-driver>=0.2.6
+
+# 科学计算 — 显著性检验（t-test、Fisher exact test 等）
+scipy>=1.10.0

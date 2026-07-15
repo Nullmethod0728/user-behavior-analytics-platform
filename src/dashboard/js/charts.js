@@ -29,6 +29,7 @@ window.addEventListener('resize', () => {
     chartTrend.resize();
     chartFunnel.resize();
     chartRetention.resize();
+    chartAB.resize();
     chartTopDownloads.resize();
 });
 
@@ -256,7 +257,130 @@ async function updateRetentionChart() {
 }
 
 // ============================================================
-// 5. Top 下载排行（横向柱状图）
+// 5. AB 实验对比面板
+// ============================================================
+
+const chartAB = echarts.init(document.getElementById('chart-ab-experiment'));
+
+async function updateABChart() {
+    const today = new Date().toISOString().split('T')[0];
+    const data = await API.getABExperiment('exp_001_home_rec_algo', today);
+    if (!data || data.length === 0) return;
+
+    // 按 metric_name 分组 { pv: {A: ..., B: ...}, uv: {...}, ... }
+    const grouped = {};
+    data.forEach(d => {
+        if (!grouped[d.metric_name]) grouped[d.metric_name] = {};
+        grouped[d.metric_name][d.variant] = d;
+    });
+
+    // 取 4 个核心指标做对比
+    const metricsToShow = [
+        { key: 'pv', label: 'PV' },
+        { key: 'uv', label: 'UV' },
+        { key: 'download_count', label: '下载量' },
+        { key: 'download_conversion_rate', label: '下载转化率(%)' },
+    ];
+
+    const categories = metricsToShow.map(m => m.label);
+    const aValues = metricsToShow.map(m =>
+        grouped[m.key] && grouped[m.key]['A'] ? grouped[m.key]['A'].metric_value : 0
+    );
+    const bValues = metricsToShow.map(m =>
+        grouped[m.key] && grouped[m.key]['B'] ? grouped[m.key]['B'].metric_value : 0
+    );
+
+    // 显著性标记
+    const sigMarks = metricsToShow.map(m => {
+        const b = grouped[m.key] && grouped[m.key]['B'] ? grouped[m.key]['B'] : null;
+        if (b && b.is_significant) return '✅';
+        if (b && b.p_value >= 0) return '❌';
+        return '';
+    });
+
+    chartAB.setOption({
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(10,14,39,0.9)',
+            borderColor: '#4facfe',
+            textStyle: { color: '#e0e6ed' },
+            formatter: function(params) {
+                let html = params[0].axisValue + '<br/>';
+                params.forEach(p => {
+                    const uplift = grouped[metricsToShow[p.dataIndex].key] &&
+                                   grouped[metricsToShow[p.dataIndex].key]['B']
+                        ? grouped[metricsToShow[p.dataIndex].key]['B'].uplift : 0;
+                    html += `${p.marker} ${p.seriesName}: ${p.value.toLocaleString()}`;
+                    if (p.seriesName === 'B组(实验组)' && uplift !== 0) {
+                        html += ` <span style="color:${uplift > 0 ? '#00e676' : '#ff5252'}">(${uplift > 0 ? '+' : ''}${uplift}%)</span>`;
+                    }
+                    html += '<br/>';
+                });
+                return html;
+            }
+        },
+        legend: {
+            data: ['A组(对照组)', 'B组(实验组)'],
+            textStyle: { color: '#8899aa' },
+            top: 0
+        },
+        grid: { top: 40, right: 30, bottom: 40, left: 80 },
+        xAxis: {
+            type: 'category',
+            data: categories,
+            axisLabel: { color: '#b0c4de', fontSize: 12 },
+            axisLine: { lineStyle: { color: '#2a3550' } },
+            axisTick: { show: false }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: { color: '#8899aa' },
+            splitLine: { lineStyle: { color: '#1a2540' } }
+        },
+        series: [
+            {
+                name: 'A组(对照组)',
+                type: 'bar',
+                data: aValues,
+                itemStyle: {
+                    color: '#4facfe',
+                    borderRadius: [4, 4, 0, 0]
+                },
+                barGap: '10%',
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#8899aa',
+                    fontSize: 10,
+                    formatter: p => p.value >= 1000 ? (p.value / 1000).toFixed(1) + 'k' : p.value
+                }
+            },
+            {
+                name: 'B组(实验组)',
+                type: 'bar',
+                data: bValues,
+                itemStyle: {
+                    color: '#00e676',
+                    borderRadius: [4, 4, 0, 0]
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#00e676',
+                    fontSize: 10,
+                    formatter: function(p) {
+                        const mark = sigMarks[p.dataIndex];
+                        const val = p.value >= 1000 ? (p.value / 1000).toFixed(1) + 'k' : p.value;
+                        return mark ? val + ' ' + mark : val;
+                    }
+                }
+            }
+        ]
+    });
+}
+
+// ============================================================
+// 6. Top 下载排行（横向柱状图）
 // ============================================================
 
 async function updateTopDownloadsChart() {
@@ -332,6 +456,7 @@ async function initDashboard() {
         updateTrendChart(),
         updateFunnelChart(),
         updateRetentionChart(),
+        updateABChart(),
         updateTopDownloadsChart()
     ]);
 
@@ -342,7 +467,8 @@ async function initDashboard() {
     // 定时刷新
     setInterval(updateClock, 1000);        // 时钟每秒
     setInterval(updateKPIs, 5000);         // KPI 每 5 秒
-    setInterval(updateTrendChart, 60000);  // 趋势图每 1 分钟（模拟实时更新）
+    setInterval(updateTrendChart, 60000);  // 趋势图每 1 分钟
+    setInterval(updateABChart, 60000);     // AB 实验每 1 分钟
 }
 
 // ── 入口 ──

@@ -1,7 +1,7 @@
 package com.analytics
 
 import com.analytics.etl.{DwdToDws, OdsToDwd}
-import com.analytics.metrics.{FunnelCalc, RetentionCalc, UserProfile}
+import com.analytics.metrics.{ABExperimentCalc, FunnelCalc, RetentionCalc, UserProfile}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 import java.time.LocalDate
@@ -16,7 +16,8 @@ import java.time.format.DateTimeFormatter
  * │ 2. DWD → DWS 天级汇总         │
  * │ 3. 留存分析                   │
  * │ 4. 漏斗分析                   │
- * │ 5. 用户画像                   │
+ * │ 5. AB 实验分析                │
+ * │ 6. 用户画像                   │
  * │                              │
  * │ 所有结果写入 ClickHouse       │
  * └──────────────────────────────┘
@@ -93,7 +94,15 @@ object Main {
       writeClickHouse(funnelDF, "ads_funnel_analysis")
 
       // ============================================================
-      // Step 6: 用户画像（全量计算）
+      // Step 6: AB 实验分析
+      // ============================================================
+      val abDF = ABExperimentCalc.execute(spark, dwdDF, date)
+      if (!abDF.isEmpty) {
+        writeClickHouse(abDF, "ads_ab_experiment")
+      }
+
+      // ============================================================
+      // Step 7: 用户画像（全量计算）
       // ============================================================
       println("\n👤 计算用户画像（全量）...")
       val allDwd = readClickHouse(spark, "dwd_user_behavior")

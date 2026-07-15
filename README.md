@@ -62,6 +62,13 @@ graph TB
     REDIS --> API
     CK --> API
     API --> DASH
+
+    subgraph 实验层
+        AB[🧪 AB实验框架<br/>分流→指标→显著性检验]
+    end
+
+    SPARK -->|实验指标计算| AB
+    AB --> API
 ```
 
 ---
@@ -99,6 +106,7 @@ user-behavior-analytics-platform/
 │   │   ├── models.py               #    数据模型定义
 │   │   ├── event_factory.py        #    事件工厂（随机生成埋点）
 │   │   ├── kafka_producer.py       #    Kafka 生产者
+│   │   ├── significance_test.py   #     AB实验显著性检验
 │   │   └── main.py                 #    入口程序
 │   │
 │   ├── flink_jobs/                 # ⚡ Flink 实时计算作业 (Java)
@@ -117,7 +125,7 @@ user-behavior-analytics-platform/
 │   │   ├── pom.xml                 #    Maven 依赖配置
 │   │   └── src/main/scala/com/analytics/
 │   │       ├── etl/                #    ETL 数据清洗
-│   │       └── metrics/            #    指标计算 (留存/漏斗/画像)
+│   │       └── metrics/            #    指标计算 (留存/漏斗/画像/AB实验)
 │   │
 │   ├── warehouse/                  # 🗄️ 数据仓库 SQL
 │   │   ├── hql/                    #    Hive/SparkSQL 分层建表
@@ -131,6 +139,7 @@ user-behavior-analytics-platform/
 │   │
 │   └── dashboard/                  # 📈 数据可视化面板
 │       ├── index.html              #    大屏主页面
+│       ├── ab-config.html          #    AB实验配置管理
 │       ├── css/                    #    样式
 │       └── js/                     #    图表逻辑 (ECharts)
 │
@@ -227,6 +236,13 @@ python -m http.server 3000
 - ✅ **漏斗分析** — 天级各环节转化率
 - ✅ **多维下钻** — 按城市/设备/版本维度分析
 
+### AB 实验
+- ✅ **用户分桶** — MD5 确定性哈希，同用户永远同组
+- ✅ **指标对比** — A/B 组 PV/UV/下载量/转化率 6 项指标
+- ✅ **提升幅度** — uplift = (B值 - A值) / A值 × 100%
+- ✅ **显著性检验** — Fisher 精确检验 / t-test / Mann-Whitney U
+- ✅ **实验管理** — 可视化配置页面，支持多实验并行
+
 ### 可视化
 - ✅ **实时大屏** — 数字翻牌器 + 趋势折线图
 - ✅ **漏斗图** — 转化率可视化
@@ -243,6 +259,7 @@ python -m http.server 3000
 | 第3-4周 | Flink 实时处理 | DataStream API、Window、Watermark、Checkpoint |
 | 第5周 | Spark 离线 + 数仓建模 | SparkSQL、数仓分层、OLAP |
 | 第6周 | API + Dashboard + 文档 | Spring Boot、ECharts、部署文档 |
+| 第7周 | AB 实验框架 + Hive 兼容 | 分桶策略、显著性检验、Hive QL 对照 |
 
 ---
 
@@ -255,7 +272,9 @@ python -m http.server 3000
 - **Spark**: RDD/DataFrame、Shuffle优化、内存管理
 - **数据仓库**: 分层架构(ODS/DWD/DWS/ADS)、维度建模、缓慢变化维
 - **ClickHouse**: MergeTree引擎、分区策略、物化视图
+- **AB 实验**: 用户分桶策略、显著性检验(P值/t-test/Fisher)、辛普森悖论
 - **系统设计**: 实时数仓架构、Lambda/Kappa架构、数据一致性保证
+- **Hive**: 分区表/分桶表、ORC/Parquet、Spark SQL 兼容 Hive QL
 
 ---
 
